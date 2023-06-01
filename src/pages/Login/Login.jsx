@@ -1,13 +1,16 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast';
 import { FcGoogle } from 'react-icons/fc'
-import { useContext } from 'react'
+import { useContext, useRef } from 'react'
 import { AuthContext } from '../../providers/AuthProvider'
 import { TbFidgetSpinner } from 'react-icons/tb';
+import { saveUser } from '../../api/auth';
 const Login = () => {
     const { loading, setLoading, signIn, signInWithGoogle, resetPassword } = useContext(AuthContext);
     const navigate = useNavigate();
-
+    const location = useLocation();
+    const from = location.state?.from?.pathname || '/'
+    const emailRef = useRef();
     // Handle Submit
     const handleSubmit = event => {
         event.preventDefault();
@@ -15,7 +18,7 @@ const Login = () => {
         const password = event.target.password.value;
         signIn(email, password).then(result => {
             console.log(result.user)
-            navigate('/')
+            navigate(from, { replace: true })
         })
             .catch(err => {
                 setLoading(false);
@@ -30,14 +33,33 @@ const Login = () => {
     const handleGoogleSignIn = () => {
         signInWithGoogle().then(result => {
             console.log(result.user)
-            navigate('/')
+            // save user to DB
+            saveUser(result.user)
+            navigate(from, { replace: true })
         })
             .catch(err => {
+                setLoading(false);
                 console.log(err.message)
                 toast.error(err.message)
-                setLoading(false);
             })
     }
+
+    // handle password reset
+    const handleReset = () => {
+        const email = emailRef.current.value;
+
+        resetPassword(email).then(result => {
+            toast.success("Please check your email for reset your password")
+            setLoading(false);
+        })
+            .catch(err => {
+                setLoading(false);
+                console.log(err.message)
+                toast.error(err.message)
+            })
+    }
+
+
     return (
         <div className='flex justify-center items-center min-h-screen'>
             <div className='flex flex-col max-w-md p-6 rounded-md sm:p-10 bg-gray-100 text-gray-900'>
@@ -58,6 +80,7 @@ const Login = () => {
                                 Email address
                             </label>
                             <input
+                                ref={emailRef}
                                 type='email'
                                 name='email'
                                 id='email'
@@ -95,7 +118,7 @@ const Login = () => {
                     </div>
                 </form>
                 <div className='space-y-1'>
-                    <button className='text-xs hover:underline hover:text-rose-500 text-gray-400'>
+                    <button onClick={handleReset} className='text-xs hover:underline hover:text-rose-500 text-gray-400'>
                         Forgot password?
                     </button>
                 </div>
